@@ -79,7 +79,7 @@ export function createEventWriter(options: WriterOptions): EventWriter {
       options.sink(JSON.stringify(valid) + "\n");
       return valid;
     },
-    events: () => stored.slice(),
+    events: () => stored.map((event) => ({ ...event })),
   };
 }
 
@@ -90,6 +90,7 @@ interface Anomaly {
   code: string;
   job_id: string;
   detail: string;
+  at: string;
 }
 
 export function findAnomalies(events: TenderEvent[]): Anomaly[] {
@@ -106,13 +107,13 @@ export function findAnomalies(events: TenderEvent[]): Anomaly[] {
         break;
       case "bid":
         if (!airlock.has(e.job_id)) {
-          out.push({ code: "bid_without_airlock", job_id: e.job_id, detail: `bid at ${e.at} with no airlock decision before it` });
+          out.push({ code: "bid_without_airlock", job_id: e.job_id, at: e.at, detail: `bid at ${e.at} with no airlock decision before it` });
         }
         bid.add(e.job_id);
         break;
       case "selection":
         if (!bid.has(e.job_id)) {
-          out.push({ code: "selection_without_bid", job_id: e.job_id, detail: `selection at ${e.at} with no bid before it` });
+          out.push({ code: "selection_without_bid", job_id: e.job_id, at: e.at, detail: `selection at ${e.at} with no bid before it` });
         }
         break;
       case "award":
@@ -120,7 +121,7 @@ export function findAnomalies(events: TenderEvent[]): Anomaly[] {
         break;
       case "delivery":
         if (!award.has(e.job_id)) {
-          out.push({ code: "delivery_without_award", job_id: e.job_id, detail: `delivery at ${e.at} with no award before it` });
+          out.push({ code: "delivery_without_award", job_id: e.job_id, at: e.at, detail: `delivery at ${e.at} with no award before it` });
         }
         break;
       case "review":
@@ -128,7 +129,7 @@ export function findAnomalies(events: TenderEvent[]): Anomaly[] {
         break;
       case "payment":
         if (!accepted.has(e.job_id)) {
-          out.push({ code: "payment_without_acceptance", job_id: e.job_id, detail: `payment at ${e.at} with no accepted review before it` });
+          out.push({ code: "payment_without_acceptance", job_id: e.job_id, at: e.at, detail: `payment at ${e.at} with no accepted review before it` });
         }
         break;
       default:
@@ -141,7 +142,10 @@ export function findAnomalies(events: TenderEvent[]): Anomaly[] {
 export function reportSection(events: TenderEvent[], day: string): string {
   if (!isIsoDay(day)) throw new EventError(`day must be YYYY-MM-DD, got ${day}`);
   const onDay = events.filter((e) => e.at.startsWith(day));
-  const anomalies = findAnomalies(onDay);
+  // Validate against the whole stream, then report only the anomalies that
+  // happened on the day. Slicing first used to invent anomalies for any job
+  // that crossed midnight, because the award landed on the day before.
+  const anomalies = findAnomalies(events).filter((a) => a.at.startsWith(day));
   const lines: string[] = [];
 
   lines.push(`## Tender report for ${day}`, "");

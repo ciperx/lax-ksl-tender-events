@@ -41,6 +41,7 @@ const md = reportSection(writer.events(), "2026-10-19");
 - **Jobs stay separate.** An anomaly on one job never bleeds into another, tested by mixing a clean job stream with a broken one.
 - **The store hands out copies**, so a caller cannot mutate history.
 - **The report is deterministic.** Same events, same Markdown, tested by comparing two runs.
+- **Midnight is not an anomaly.** The daily section validates against the whole stream and then reports only the anomalies that happened on that day, so a job that is awarded before midnight and delivered after it is not reported as corrupt. Tested in both directions.
 
 ## Report shape
 
@@ -65,9 +66,9 @@ Anomalies: none
 
 ## Tests
 
-24 tests in `test/events.test.ts`: validation refusals, append behaviour, no sink call on failure, time order, copy semantics, four anomaly classes with their near misses, cross job isolation, and report counting, totals, day filtering, anomaly listing, determinism and the malformed day refusal.
+27 tests in `test/events.test.ts`: validation refusals, append behaviour, no sink call on failure, time order, copy semantics, four anomaly classes with their near misses, cross job isolation, and report counting, totals, day filtering, anomaly listing, determinism and the malformed day refusal.
 
-Mutation checked before pushing: disabling the airlock check fails 3 tests, then restoring it returns to green.
+Mutation checked before pushing: disabling the airlock check fails 3 tests (the refused airlock case and both midnight cases), then restoring it returns to green.
 
 ## Licence
 

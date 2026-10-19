@@ -180,3 +180,34 @@ describe("reportSection", () => {
     expect(() => reportSection(happy(), "19-10-2026")).toThrow(/YYYY-MM-DD/);
   });
 });
+
+describe("midnight boundary", () => {
+  it("does not invent anomalies for a job that crosses midnight", () => {
+    const stream: TenderEvent[] = [
+      { kind: "listing", job_id: "j1", at: "2026-10-18T20:00:00Z" },
+      { kind: "airlock", job_id: "j1", at: "2026-10-18T21:00:00Z", decision: "admit" },
+      { kind: "bid", job_id: "j1", at: "2026-10-18T22:00:00Z" },
+      { kind: "award", job_id: "j1", at: "2026-10-18T23:00:00Z" },
+      { kind: "review", job_id: "j1", at: "2026-10-18T23:30:00Z", verdict: "accepted" },
+      { kind: "delivery", job_id: "j1", at: "2026-10-19T00:30:00Z" },
+      { kind: "payment", job_id: "j1", at: "2026-10-19T01:00:00Z", amount_usdc: 5 },
+    ];
+    expect(reportSection(stream, "2026-10-19")).toContain("Anomalies: none");
+    expect(reportSection(stream, "2026-10-18")).toContain("Anomalies: none");
+  });
+
+  it("still reports a real anomaly that happens on the day", () => {
+    const stream: TenderEvent[] = [
+      { kind: "payment", job_id: "j9", at: "2026-10-19T02:00:00Z", amount_usdc: 1 },
+    ];
+    expect(reportSection(stream, "2026-10-19")).toContain("payment_without_acceptance on job j9");
+  });
+
+  it("hands out copies that cannot mutate history", () => {
+    const w = createEventWriter({ sink: () => {} });
+    w.emit({ kind: "bid", job_id: "j1", at: at(1) });
+    const copy = w.events();
+    copy[0].job_id = "tampered";
+    expect(w.events()[0].job_id).toBe("j1");
+  });
+});
