@@ -1,0 +1,11 @@
+{
+  "name": "lax-ksl-tender-events",
+  "version": "1.0.0",
+  "description": "Append only JSONL event writer for LAX tender steps plus a daily Markdown report section with anomaly detection.",
+  "type": "module",
+  "main": "dist/events.js",
+  "types": "dist/events.d.ts",
+  "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run" },
+  "license": "MIT",
+  "devDependencies": { "typescript": "^5.6.3", "vitest": "^2.1.4" }
+}
