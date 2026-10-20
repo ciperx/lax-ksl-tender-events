@@ -6,6 +6,7 @@ import {
   validateEvent,
   EventError,
   EVENT_KINDS,
+  emit,
 } from "../src/events";
 import type { TenderEvent } from "../src/events";
 
@@ -209,5 +210,22 @@ describe("midnight boundary", () => {
     const copy = w.events();
     copy[0].job_id = "tampered";
     expect(w.events()[0].job_id).toBe("j1");
+  });
+});
+
+describe("the module level emit", () => {
+  it("writes one JSONL line through the writer it is given and returns the event", () => {
+    const lines: string[] = [];
+    const event = emit({ kind: "listing", job_id: "j9", at: at(6) }, { sink: (line) => lines.push(line) });
+    expect(event.kind).toBe("listing");
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0]).kind).toBe("listing");
+  });
+
+  it("keeps the stream append only in time order", () => {
+    const lines: string[] = [];
+    const writer = createEventWriter({ sink: (line) => lines.push(line) });
+    writer.emit({ kind: "listing", job_id: "j9", at: at(7) });
+    expect(() => writer.emit({ kind: "bid", job_id: "j9", at: at(6) })).toThrow(/time order/);
   });
 });

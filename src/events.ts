@@ -83,6 +83,18 @@ export function createEventWriter(options: WriterOptions): EventWriter {
   };
 }
 
+/**
+ * Append one event to the module level stream, or to a writer you pass in. The default sink writes
+ * the JSONL line to stdout, which is what a script that pipes the stream to a file expects.
+ */
+let defaultWriter: EventWriter | null = null;
+
+export function emit(event: TenderEvent, options?: WriterOptions): TenderEvent {
+  if (options) return createEventWriter(options).emit(event);
+  if (!defaultWriter) defaultWriter = createEventWriter({ sink: (line) => process.stdout.write(line) });
+  return defaultWriter.emit(event);
+}
+
 const count = (events: TenderEvent[], kind: EventKind, day: string): number =>
   events.filter((e) => e.kind === kind && e.at.startsWith(day)).length;
 
